@@ -1,0 +1,774 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>加工条件 計算（旋削＋ミル＋穴加工：ドリル/リーマ/タップ）</title>
+  <style>
+    body { font-family: system-ui, -apple-system, "Segoe UI", Arial, sans-serif; margin: 16px; }
+    h1 { font-size: 20px; margin: 0 0 12px; }
+    .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; }
+    .card { border: 1px solid #ccc; border-radius: 10px; padding: 12px; margin: 10px 0; }
+    .card h2 { font-size: 16px; margin: 0 0 10px; }
+    label { display:block; font-size: 12px; margin: 8px 0 4px; }
+    input, select { width: 240px; padding: 7px; border-radius: 8px; border: 1px solid #bbb; }
+    .wide { width: 360px; }
+    button { padding: 10px 14px; border-radius: 10px; border: 1px solid #333; background: #111; color: #fff; cursor: pointer; }
+    button:active { transform: translateY(1px); }
+    .hint { font-size: 12px; color: #444; margin-top: 4px; }
+    .bad  { color: #b00020; font-weight: 800; }
+    .warn { color: #9a6b00; font-weight: 800; }
+    .good { color: #0b6b0b; font-weight: 800; }
+    .pill { display:inline-block; padding:2px 8px; border-radius: 999px; border: 1px solid #bbb; background:#fafafa; margin-right:6px; font-size: 12px; }
+    table { border-collapse: collapse; }
+    td { padding: 3px 8px; vertical-align: top; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <h1>加工条件 計算（旋削＋マシニング＋穴加工：ドリル/リーマ/タップ）</h1>
+  <div class="hint">
+    入力 →「計算する」→ 計算結果／評価（速い・遅い・重い）／注意（リーマ代など）／時間（1穴・合計）が出ます。<br>
+    ※材質は下のJSの <span class="mono">MATERIALS</span> を増やせば追加できます。
+  </div>
+
+  <div class="card">
+    <h2>① 共通</h2>
+    <div class="row">
+      <div>
+        <label>加工法</label>
+        <select id="proc">
+          <option value="turn">旋削</option>
+          <option value="mill">マシニング（エンドミル）</option>
+          <option value="hole">穴加工（ドリル/リーマ/タップ）</option>
+        </select>
+      </div>
+
+      <div>
+        <label>目的</label>
+        <select id="mode">
+          <option value="rough">荒取り</option>
+          <option value="finish">仕上げ</option>
+        </select>
+      </div>
+
+      <div>
+        <label>冷却</label>
+        <select id="cool">
+          <option value="wet">湿式</option>
+          <option value="dry">乾式</option>
+          <option value="mql">MQL</option>
+        </select>
+      </div>
+
+      <div>
+        <label>材質</label>
+        <select id="mat" class="wide"></select>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" id="turnCard">
+    <h2>② 旋削 入力</h2>
+    <div class="row">
+      <div>
+        <label>旋削タイプ</label>
+        <select id="turnType" class="wide">
+          <option value="long">長手（外径/内径ストレート）</option>
+          <option value="groove">溝入れ/突っ切り</option>
+          <option value="face_simple">正面（簡易：平均直径）</option>
+          <option value="face_precise">正面（精密：体積/時間）</option>
+        </select>
+      </div>
+
+      <div id="turnDBox">
+        <label>直径 D_start [mm]（加工前）</label>
+        <input id="D_turn" type="number" step="0.01" value="50">
+      </div>
+
+      <div>
+        <label>切込み ap [mm]（半径方向）</label>
+        <input id="ap_turn" type="number" step="0.01" value="1.0">
+      </div>
+
+      <div>
+        <label>送り f [mm/rev]</label>
+        <input id="f_turn" type="number" step="0.001" value="0.20">
+      </div>
+
+      <div id="grooveBox" style="display:none;">
+        <label>溝幅 b [mm]</label>
+        <input id="b_turn" type="number" step="0.01" value="3.0">
+      </div>
+
+      <div id="faceBox" style="display:none;">
+        <label>正面：外径 D_outer [mm]</label>
+        <input id="D_outer" type="number" step="0.01" value="60">
+        <label>正面：内径 D_inner [mm]（中心までなら0）</label>
+        <input id="D_inner" type="number" step="0.01" value="0">
+      </div>
+
+      <div>
+        <label>ノーズR re [mm]（任意：Ra計算）</label>
+        <input id="re_turn" type="number" step="0.01" placeholder="例 0.4">
+      </div>
+
+      <div>
+        <label>内径加工（ボーリング）？</label>
+        <select id="isBore">
+          <option value="no">いいえ（外径）</option>
+          <option value="yes">はい（内径）</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" id="millCard" style="display:none;">
+    <h2>③ マシニング 入力（エンドミル）</h2>
+    <div class="row">
+      <div>
+        <label>工具径 D [mm]</label>
+        <input id="D_mill" type="number" step="0.01" value="10">
+      </div>
+
+      <div>
+        <label>刃数 z</label>
+        <input id="z_mill" type="number" step="1" value="4">
+      </div>
+
+      <div>
+        <label>切込み ap [mm]</label>
+        <input id="ap_mill" type="number" step="0.01" value="2.0">
+      </div>
+
+      <div>
+        <label>切込み ae [mm]</label>
+        <input id="ae_mill" type="number" step="0.01" value="5.0">
+      </div>
+
+      <div>
+        <label>送り fz [mm/tooth]</label>
+        <input id="fz_mill" type="number" step="0.001" value="0.05">
+      </div>
+    </div>
+  </div>
+
+  <div class="card" id="holeCard" style="display:none;">
+    <h2>④ 穴加工（ドリル／リーマ／タップ）</h2>
+
+    <div class="row">
+      <div>
+        <label>穴加工タイプ</label>
+        <select id="holeType" class="wide">
+          <option value="drill">ドリル</option>
+          <option value="ream">下穴→リーマ</option>
+          <option value="tap">タップ</option>
+        </select>
+      </div>
+
+      <div>
+        <label>穴数（個）</label>
+        <input id="qty_hole" type="number" step="1" value="1">
+      </div>
+
+      <div>
+        <label>穴深さ L [mm]（1穴）</label>
+        <input id="L_hole" type="number" step="0.1" value="20">
+      </div>
+
+      <div>
+        <label>仕上径（目標径） D_final [mm]</label>
+        <input id="D_final" type="number" step="0.01" value="10">
+      </div>
+
+      <div id="pilotBox" style="display:none;">
+        <label>下穴径 D_pilot [mm]（リーマ用）</label>
+        <input id="D_pilot" type="number" step="0.01" value="9.7">
+      </div>
+
+      <div>
+        <label>送り f [mm/rev]</label>
+        <input id="f_hole" type="number" step="0.001" value="0.20">
+      </div>
+
+      <div id="tapStdBox" style="display:none;">
+        <label>Mねじ（標準）</label>
+        <select id="m_thread" class="wide"></select>
+        <div class="hint">選ぶと「ピッチ」「下穴径（推奨）」が自動で入ります。</div>
+      </div>
+
+      <div id="pitchBox" style="display:none;">
+        <label>タップ：ピッチ p [mm]</label>
+        <input id="pitch" type="number" step="0.001" value="1.5">
+      </div>
+
+      <div id="tapKindBox" style="display:none;">
+        <label>タップ種類</label>
+        <select id="tapKind">
+          <option value="cut">切削タップ</option>
+          <option value="form">形成タップ</option>
+        </select>
+        <div class="hint">形成タップは低速・高トルク寄りになりやすいのでVcを低めに補正します。</div>
+      </div>
+
+      <div id="tapPilotBox" style="display:none;">
+        <label>タップ：下穴径 D_pilot [mm]（自動入力）</label>
+        <input id="tap_pilot" type="number" step="0.01" value="8.5">
+      </div>
+    </div>
+
+    <div id="holeWarnings" class="hint"></div>
+  </div>
+
+  <div class="card">
+    <h2>⑤ 機械制約</h2>
+    <div class="row">
+      <div>
+        <label>主軸最高回転 n_max [min⁻¹]</label>
+        <input id="nmax" type="number" step="1" value="8000">
+      </div>
+      <div>
+        <label>主軸動力 P_max [kW]</label>
+        <input id="pmax" type="number" step="0.01" value="7.5">
+      </div>
+      <div>
+        <label>主軸トルク T_max [N·m]</label>
+        <input id="tmax" type="number" step="0.1" value="50">
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <button id="calcBtn">計算する</button>
+  </div>
+
+  <div class="card">
+    <h2>⑥ 結果</h2>
+    <div id="out"></div>
+  </div>
+
+<script>
+/** =========================
+ *  材質マスタ（初期登録）
+ * ========================= */
+const MATERIALS = [
+  { key:"S45C",   label:"S45C（鉄）", group:"steel",     U:1.5, Vc:{ rough:[150,220], finish:[180,280] } },
+  { key:"SUS304", label:"SUS304（ステン）", group:"stainless", U:2.4, Vc:{ rough:[80,150],  finish:[100,180] } },
+  { key:"A5052",  label:"A5052（アルミ）", group:"aluminum",  U:0.6, Vc:{ rough:[350,800], finish:[600,1200] } },
+  { key:"SS400",  label:"SS400（鉄）", group:"steel", U:1.5, Vc:{ rough:[140,210], finish:[170,260] } },
+  { key:"SCM440", label:"SCM440（合金鋼）", group:"steel", U:1.7, Vc:{ rough:[120,190], finish:[150,230] } },
+  { key:"SKD11",  label:"SKD11（工具鋼）", group:"tool_steel", U:2.0, Vc:{ rough:[80,140], finish:[100,170] } },
+  { key:"FC250",  label:"FC250（ねずみ鋳鉄）", group:"cast_iron_gray", U:1.2, Vc:{ rough:[160,260], finish:[200,320] } },
+  { key:"FCD450", label:"FCD450（ダクタイル鋳鉄）", group:"cast_iron_ductile", U:1.3, Vc:{ rough:[130,220], finish:[160,260] } },
+  { key:"A6061",  label:"A6061（アルミ）", group:"aluminum", U:0.6, Vc:{ rough:[400,900], finish:[700,1400] } },
+  { key:"C3604",  label:"C3604（快削黄銅）", group:"brass", U:0.7, Vc:{ rough:[200,500], finish:[300,800] } },
+];
+
+/** 冷却補正（ざっくり） */
+const COOL_FACTOR = { wet: 1.00, mql: 0.95, dry: 0.85 };
+
+/** タップ：Mねじ表（標準ピッチ中心） */
+const METRIC_THREADS = [
+  // major, pitch, recommended tap drill (一般的な 75%前後の目安：D - P)
+  { name:"M3×0.5",  D:3.0,  P:0.5,  drill:2.5 },
+  { name:"M4×0.7",  D:4.0,  P:0.7,  drill:3.3 },
+  { name:"M5×0.8",  D:5.0,  P:0.8,  drill:4.2 },
+  { name:"M6×1.0",  D:6.0,  P:1.0,  drill:5.0 },
+  { name:"M8×1.25", D:8.0,  P:1.25, drill:6.8 },
+  { name:"M10×1.5", D:10.0, P:1.5,  drill:8.5 },
+  { name:"M12×1.75",D:12.0, P:1.75, drill:10.2 },
+  { name:"M14×2.0", D:14.0, P:2.0,  drill:12.0 },
+  { name:"M16×2.0", D:16.0, P:2.0,  drill:14.0 },
+  { name:"M18×2.5", D:18.0, P:2.5,  drill:15.5 },
+  { name:"M20×2.5", D:20.0, P:2.5,  drill:17.5 },
+];
+
+/** =========================
+ *  ユーティリティ
+ * ========================= */
+function clamp(v, lo, hi){ return Math.max(lo, Math.min(hi, v)); }
+function fmt(x, d=0){ if (!isFinite(x)) return "—"; return Number(x).toFixed(d); }
+function pct(x){ if (!isFinite(x)) return "—"; return (x*100).toFixed(0) + "%"; }
+function pill(text){ return `<span class="pill">${text}</span>`; }
+function severityLoad(load){
+  if (!isFinite(load)) return { cls:"warn", text:"不明" };
+  if (load > 0.90) return { cls:"bad",  text:"過負荷" };
+  if (load > 0.70) return { cls:"warn", text:"やや重い" };
+  return { cls:"good", text:"安全域" };
+}
+function severitySpeed(Vc_eff, rec){
+  const [lo, hi] = rec;
+  if (!isFinite(Vc_eff)) return { cls:"warn", text:"不明" };
+  if (Vc_eff < lo) return { cls:"warn", text:`遅い（推奨下限 ${lo} 未満）` };
+  if (Vc_eff > hi) return { cls:"warn", text:`速い（推奨上限 ${hi} 超）` };
+  return { cls:"good", text:"推奨範囲内" };
+}
+
+/** =========================
+ *  計算コア
+ * ========================= */
+function calcCommonFromVc({ Vc, D, nmax }){
+  let n = (1000 * Vc) / (Math.PI * D);
+  if (isFinite(nmax) && nmax > 0) n = Math.min(n, nmax);
+  return n;
+}
+function calcPowerTorque({ U, MRR, n, pmax, tmax }){
+  const P = (U * MRR) / 60000; // kW
+  const T = (n > 1e-9) ? (9550 * P) / n : NaN; // N·m
+  const loadP = (pmax > 0) ? (P / pmax) : NaN;
+  const loadT = (tmax > 0) ? (T / tmax) : NaN;
+  return { P, T, loadP, loadT };
+}
+function calcMill({ Vc, D, z, ap, ae, fz, U, nmax, pmax, tmax }){
+  const n = calcCommonFromVc({ Vc, D, nmax });
+  const vf = fz * z * n;
+  const MRR = ap * ae * vf;
+  const pt = calcPowerTorque({ U, MRR, n, pmax, tmax });
+  return { n, vf, MRR, ...pt };
+}
+function calcHoleAreaMRR({ Vc, D, f, U, nmax, pmax, tmax }){
+  const n = calcCommonFromVc({ Vc, D, nmax });
+  const vf = f * n;
+  const area = (Math.PI * D * D) / 4;
+  const MRR = area * vf;
+  const pt = calcPowerTorque({ U, MRR, n, pmax, tmax });
+  return { n, vf, MRR, ...pt };
+}
+function calcTap({ Vc, D_major, pitch, U, nmax, pmax, tmax }){
+  const n = calcCommonFromVc({ Vc, D: D_major, nmax });
+  const vf = pitch * n;
+  // MRRは参考表示（穴断面）
+  const area = (Math.PI * D_major * D_major) / 4;
+  const MRR = area * vf;
+  const pt = calcPowerTorque({ U, MRR, n, pmax, tmax });
+  return { n, vf, MRR, ...pt };
+}
+function calcTurnLong({ Vc, D_start, ap, f, U, nmax, pmax, tmax, isBore }){
+  const D_eff = isBore ? (D_start + ap) : (D_start - ap);
+  const D_eff_safe = Math.max(D_eff, 0.1);
+  const n = calcCommonFromVc({ Vc, D: D_eff_safe, nmax });
+  const vf = f * n;
+  const MRR = ap * f * (Math.PI * D_eff_safe * n);
+  const pt = calcPowerTorque({ U, MRR, n, pmax, tmax });
+  return { n, vf, MRR, D_eff: D_eff_safe, ...pt };
+}
+function calcTurnGroove({ Vc, D_start, ap, f, b, U, nmax, pmax, tmax }){
+  const n = calcCommonFromVc({ Vc, D: Math.max(D_start, 0.1), nmax });
+  const vf = f * n;
+  const MRR = ap * b * vf;
+  const pt = calcPowerTorque({ U, MRR, n, pmax, tmax });
+  return { n, vf, MRR, ...pt };
+}
+function calcTurnFaceSimple({ Vc, D_outer, D_inner, ap, f, U, nmax, pmax, tmax }){
+  const D_eff = (D_outer + D_inner) / 2;
+  const n = calcCommonFromVc({ Vc, D: Math.max(D_eff, 0.1), nmax });
+  const vf = f * n;
+  const MRR = ap * f * (Math.PI * Math.max(D_eff, 0.1) * n);
+  const pt = calcPowerTorque({ U, MRR, n, pmax, tmax });
+  return { n, vf, MRR, D_eff: Math.max(D_eff,0.1), ...pt };
+}
+function calcTurnFacePrecise({ Vc, D_outer, D_inner, ap, f, U, nmax, pmax, tmax }){
+  const D_eff = (D_outer + D_inner) / 2;
+  const n = calcCommonFromVc({ Vc, D: Math.max(D_eff, 0.1), nmax });
+  const vf = f * n;
+  const r_travel = (D_outer - D_inner) / 2;
+  const t = (vf > 1e-9) ? (r_travel / vf) : NaN;
+  const vol = (Math.PI / 4) * (D_outer*D_outer - D_inner*D_inner) * ap;
+  const MRR = (t > 1e-9) ? (vol / t) : NaN;
+  const pt = calcPowerTorque({ U, MRR, n, pmax, tmax });
+  return { n, vf, MRR, D_eff: Math.max(D_eff,0.1), timeMin: t, volume: vol, ...pt };
+}
+
+/** =========================
+ *  推奨Vc
+ * ========================= */
+function getMaterial(){
+  const key = document.getElementById("mat").value;
+  return MATERIALS.find(m => m.key === key) || MATERIALS[0];
+}
+function getRecommendedVc(mat, mode){
+  const rec = mat.Vc?.[mode];
+  if (rec && rec.length===2) return rec;
+  return (mode==="rough") ? [100,200] : [120,240];
+}
+function effectiveVcTarget({ rec, cool }){
+  const cf = COOL_FACTOR[cool] ?? 1.0;
+  return [rec[0]*cf, rec[1]*cf];
+}
+
+/** =========================
+ *  UI初期化
+ * ========================= */
+const matSel = document.getElementById("mat");
+for (const m of MATERIALS){
+  const opt = document.createElement("option");
+  opt.value = m.key;
+  opt.textContent = m.label;
+  matSel.appendChild(opt);
+}
+matSel.value = "S45C";
+
+// Mねじセレクタ
+const mSel = document.getElementById("m_thread");
+for (const t of METRIC_THREADS){
+  const opt = document.createElement("option");
+  opt.value = t.name;
+  opt.textContent = `${t.name}（下穴${t.drill}）`;
+  mSel.appendChild(opt);
+}
+mSel.value = "M10×1.5";
+
+const procEl = document.getElementById("proc");
+const turnCard = document.getElementById("turnCard");
+const millCard = document.getElementById("millCard");
+const holeCard = document.getElementById("holeCard");
+
+const turnTypeEl = document.getElementById("turnType");
+const grooveBox = document.getElementById("grooveBox");
+const faceBox = document.getElementById("faceBox");
+const turnDBox = document.getElementById("turnDBox");
+
+const holeTypeEl = document.getElementById("holeType");
+const pilotBox = document.getElementById("pilotBox");
+const tapStdBox = document.getElementById("tapStdBox");
+const pitchBox = document.getElementById("pitchBox");
+const tapKindBox = document.getElementById("tapKindBox");
+const tapPilotBox = document.getElementById("tapPilotBox");
+
+function updateTurnUI(){
+  const t = turnTypeEl.value;
+  grooveBox.style.display = (t==="groove") ? "" : "none";
+  const isFace = (t==="face_simple" || t==="face_precise");
+  faceBox.style.display = isFace ? "" : "none";
+  turnDBox.style.display = isFace ? "none" : "";
+}
+
+function updateHoleUI(){
+  const ht = holeTypeEl.value;
+  pilotBox.style.display = (ht==="ream") ? "" : "none";
+  tapStdBox.style.display = (ht==="tap") ? "" : "none";
+  pitchBox.style.display = (ht==="tap") ? "" : "none";
+  tapKindBox.style.display = (ht==="tap") ? "" : "none";
+  tapPilotBox.style.display = (ht==="tap") ? "" : "none";
+  updateHoleWarnings();
+}
+
+function updateProcUI(){
+  const p = procEl.value;
+  turnCard.style.display = (p==="turn") ? "" : "none";
+  millCard.style.display = (p==="mill") ? "" : "none";
+  holeCard.style.display = (p==="hole") ? "" : "none";
+}
+
+turnTypeEl.addEventListener("change", () => { updateTurnUI(); });
+holeTypeEl.addEventListener("change", () => { updateHoleUI(); });
+procEl.addEventListener("change", () => { updateProcUI(); });
+
+mSel.addEventListener("change", () => {
+  const t = METRIC_THREADS.find(x => x.name === mSel.value);
+  if (!t) return;
+  document.getElementById("D_final").value = t.D;
+  document.getElementById("pitch").value = t.P;
+  document.getElementById("tap_pilot").value = t.drill;
+  document.getElementById("f_hole").value = t.P; // 同期タップの基本
+  updateHoleWarnings();
+});
+
+document.getElementById("D_final").addEventListener("input", updateHoleWarnings);
+document.getElementById("D_pilot").addEventListener("input", updateHoleWarnings);
+document.getElementById("L_hole").addEventListener("input", updateHoleWarnings);
+document.getElementById("qty_hole").addEventListener("input", updateHoleWarnings);
+document.getElementById("tapKind").addEventListener("change", updateHoleWarnings);
+document.getElementById("pitch").addEventListener("input", updateHoleWarnings);
+document.getElementById("tap_pilot").addEventListener("input", updateHoleWarnings);
+
+updateTurnUI();
+updateProcUI();
+updateHoleUI();
+
+// 初期：M10×1.5反映
+mSel.dispatchEvent(new Event("change"));
+
+/** =========================
+ *  警告（リーマ代・深穴・タップ）
+ * ========================= */
+function updateHoleWarnings(){
+  const ht = holeTypeEl.value;
+  let msgs = [];
+
+  const L = Number(document.getElementById("L_hole").value);
+  const qty = Number(document.getElementById("qty_hole").value);
+  const Dfinal = Number(document.getElementById("D_final").value);
+
+  if (isFinite(L) && isFinite(Dfinal) && Dfinal>0 && L > 3*Dfinal){
+    msgs.push(`<span class="warn">深穴（L > 3D）目安：ペック推奨／切りくず詰まり注意</span>`);
+  }
+  if (isFinite(qty) && qty > 1){
+    msgs.push(`<span class="hint">合計時間 = 1穴時間 × ${qty} 個 で表示します。</span>`);
+  }
+
+  if (ht === "ream"){
+    const Dpilot = Number(document.getElementById("D_pilot").value);
+    const allowLo = 0.10; // 小さすぎ（削り代不足）
+    const allowHi = 0.40; // 大きすぎ（仕上げ面悪化・欠け）
+    const stock = Dfinal - Dpilot;
+
+    if (isFinite(stock)){
+      if (stock < allowLo){
+        msgs.push(`<span class="warn">リーマ代が小さすぎ：D_final - D_pilot = ${fmt(stock,2)} mm（目安 ${allowLo}〜${allowHi}）</span>`);
+      } else if (stock > allowHi){
+        msgs.push(`<span class="warn">リーマ代が大きすぎ：D_final - D_pilot = ${fmt(stock,2)} mm（目安 ${allowLo}〜${allowHi}）</span>`);
+      } else {
+        msgs.push(`<span class="good">リーマ代OK：${fmt(stock,2)} mm（目安 ${allowLo}〜${allowHi}）</span>`);
+      }
+    }
+  }
+
+  if (ht === "tap"){
+    const pitch = Number(document.getElementById("pitch").value);
+    const tapKind = document.getElementById("tapKind").value;
+    const Dpilot = Number(document.getElementById("tap_pilot").value);
+
+    if (isFinite(pitch) && isFinite(Dfinal) && isFinite(Dpilot)){
+      // ざっくり目安：切削タップは D - P、形成タップは少し大きめ（例：D - 0.8P）
+      const refCut = Dfinal - pitch;
+      const refForm = Dfinal - 0.8*pitch;
+
+      const ref = (tapKind==="form") ? refForm : refCut;
+      const diff = Dpilot - ref;
+
+      msgs.push(`<span class="hint">下穴目安（参考）：切削 ${fmt(refCut,2)} / 形成 ${fmt(refForm,2)} mm</span>`);
+      if (Math.abs(diff) > 0.25){
+        msgs.push(`<span class="warn">下穴が目安から離れています：現在 ${fmt(Dpilot,2)}（目安 ${fmt(ref,2)}）</span>`);
+      }
+      if (tapKind==="form"){
+        msgs.push(`<span class="warn">形成タップ：トルク上がりやすい（Vc低め推奨）</span>`);
+      }
+    }
+  }
+
+  document.getElementById("holeWarnings").innerHTML = msgs.join("<br>");
+}
+
+/** =========================
+ *  メイン計算
+ * ========================= */
+document.getElementById("calcBtn").addEventListener("click", () => {
+  const proc = procEl.value;
+  const mode = document.getElementById("mode").value;
+  const cool = document.getElementById("cool").value;
+
+  const nmax = Number(document.getElementById("nmax").value);
+  const pmax = Number(document.getElementById("pmax").value);
+  const tmax = Number(document.getElementById("tmax").value);
+
+  const mat = getMaterial();
+  const U = mat.U;
+
+  const rec = getRecommendedVc(mat, mode);
+  const recEff = effectiveVcTarget({ rec, cool });
+  const Vc_base = (recEff[0] + recEff[1]) / 2;
+
+  let result = null;
+  let extras = {};
+
+  try{
+    if (proc === "mill"){
+      const D  = Number(document.getElementById("D_mill").value);
+      const z  = Number(document.getElementById("z_mill").value);
+      const ap = Number(document.getElementById("ap_mill").value);
+      const ae = Number(document.getElementById("ae_mill").value);
+      const fz = Number(document.getElementById("fz_mill").value);
+
+      result = calcMill({ Vc: Vc_base, D, z, ap, ae, fz, U, nmax, pmax, tmax });
+      extras = { proc, D, z, ap, ae, fz };
+
+    } else if (proc === "hole"){
+      const holeType = holeTypeEl.value;
+      const qty = Number(document.getElementById("qty_hole").value);
+      const L = Number(document.getElementById("L_hole").value);
+      const D_final = Number(document.getElementById("D_final").value);
+      const f = Number(document.getElementById("f_hole").value);
+
+      if (holeType === "drill"){
+        const drill = calcHoleAreaMRR({ Vc: Vc_base, D: D_final, f, U, nmax, pmax, tmax });
+        const t1 = (L>0 && drill.vf>0) ? (L/drill.vf) : NaN;
+        const tTot = (isFinite(t1) && isFinite(qty)) ? (t1*qty) : NaN;
+        result = drill;
+        extras = { proc, holeType, qty, L, D_final, f, time1: t1, timeTot: tTot };
+
+      } else if (holeType === "ream"){
+        const D_pilot = Number(document.getElementById("D_pilot").value);
+
+        const drill = calcHoleAreaMRR({ Vc: Vc_base, D: D_pilot, f, U, nmax, pmax, tmax });
+
+        // リーマ：低速・低送り（初期値）
+        const Vc_ream = Vc_base * 0.40;
+        const f_ream  = f * 0.60;
+        const ream = calcHoleAreaMRR({ Vc: Vc_ream, D: D_final, f: f_ream, U, nmax, pmax, tmax });
+
+        const t_drill = (L>0 && drill.vf>0) ? (L/drill.vf) : NaN;
+        const t_ream  = (L>0 && ream.vf>0)  ? (L/ream.vf)  : NaN;
+        const t1 = (isFinite(t_drill)&&isFinite(t_ream)) ? (t_drill+t_ream) : NaN;
+        const tTot = (isFinite(t1) && isFinite(qty)) ? (t1*qty) : NaN;
+
+        // 表示用（メインはリーマ側のn/vf/P/T）
+        result = { ...ream, drill, ream };
+        extras = { proc, holeType, qty, L, D_final, D_pilot, f, Vc_ream, f_ream, t_drill, t_ream, time1:t1, timeTot:tTot };
+
+      } else { // tap
+        const pitch = Number(document.getElementById("pitch").value);
+        const tapKind = document.getElementById("tapKind").value;
+        const D_pilot = Number(document.getElementById("tap_pilot").value);
+
+        // タップVc補正：切削=0.25、形成=0.18（低め）
+        const Vc_tap = Vc_base * (tapKind==="form" ? 0.18 : 0.25);
+
+        // 同期タップ前提：vf = pitch * n
+        const tap = calcTap({ Vc: Vc_tap, D_major: D_final, pitch, U, nmax, pmax, tmax });
+
+        const t1 = (L>0 && tap.vf>0) ? (L/tap.vf) : NaN;
+        const tTot = (isFinite(t1) && isFinite(qty)) ? (t1*qty) : NaN;
+
+        result = tap;
+        extras = { proc, holeType, qty, L, D_final, pitch, tapKind, D_pilot, Vc_tap, time1:t1, timeTot:tTot };
+      }
+
+    } else { // turn
+      const turnType = document.getElementById("turnType").value;
+      const ap = Number(document.getElementById("ap_turn").value);
+      const f  = Number(document.getElementById("f_turn").value);
+      const re = Number(document.getElementById("re_turn").value);
+      const isBore = (document.getElementById("isBore").value === "yes");
+
+      if (turnType === "groove"){
+        const D_start = Number(document.getElementById("D_turn").value);
+        const b = Number(document.getElementById("b_turn").value);
+        result = calcTurnGroove({ Vc: Vc_base, D_start, ap, f, b, U, nmax, pmax, tmax });
+        extras = { proc, turnType, D_start, ap, f, b, re };
+
+      } else if (turnType === "face_simple"){
+        const D_outer = Number(document.getElementById("D_outer").value);
+        const D_inner = Number(document.getElementById("D_inner").value);
+        result = calcTurnFaceSimple({ Vc: Vc_base, D_outer, D_inner, ap, f, U, nmax, pmax, tmax });
+        extras = { proc, turnType, D_outer, D_inner, ap, f, re };
+
+      } else if (turnType === "face_precise"){
+        const D_outer = Number(document.getElementById("D_outer").value);
+        const D_inner = Number(document.getElementById("D_inner").value);
+        result = calcTurnFacePrecise({ Vc: Vc_base, D_outer, D_inner, ap, f, U, nmax, pmax, tmax });
+        extras = { proc, turnType, D_outer, D_inner, ap, f, re, timeMin: result.timeMin, volume: result.volume };
+
+      } else { // long
+        const D_start = Number(document.getElementById("D_turn").value);
+        result = calcTurnLong({ Vc: Vc_base, D_start, ap, f, U, nmax, pmax, tmax, isBore });
+        extras = { proc, turnType, D_start, D_eff: result.D_eff, ap, f, re, isBore };
+      }
+    }
+
+    renderAll({ proc, mode, cool, mat, U, recEff, Vc_base, pmax, tmax, result, extras });
+
+  } catch(e){
+    document.getElementById("out").innerHTML = `<span class="bad">計算エラー：</span> ${String(e)}`;
+  }
+});
+
+function renderAll(ctx){
+  const { proc, mode, cool, mat, U, recEff, Vc_base, pmax, tmax, result, extras } = ctx;
+
+  const speedEval = severitySpeed(Vc_base, recEff);
+  const loadMax = Math.max(result.loadP ?? NaN, result.loadT ?? NaN);
+  const loadEval = severityLoad(loadMax);
+
+  let Ra = NaN;
+  if (proc==="turn"){
+    const f = extras.f;
+    const re = extras.re;
+    if (isFinite(f) && isFinite(re) && re > 0) Ra = (f*f)/(32*re) * 1000;
+  }
+
+  let timeRows = "";
+  if (proc==="hole"){
+    timeRows = `
+      <tr><td>1穴時間</td><td>${isFinite(extras.time1) ? fmt(extras.time1,3)+" 分" : "—"}</td></tr>
+      <tr><td>合計時間</td><td>${isFinite(extras.timeTot) ? fmt(extras.timeTot,3)+" 分（×"+extras.qty+"穴）" : "—"}</td></tr>
+    `;
+  }
+
+  let holeDetail = "";
+  if (proc==="hole" && extras.holeType==="ream"){
+    const drill = result.drill;
+    const ream  = result.ream;
+    holeDetail = `
+      <div class="card">
+        <h2>下穴→リーマ（内訳）</h2>
+        <table>
+          <tr><td>下穴（ドリル）径</td><td>${fmt(extras.D_pilot,2)} mm</td></tr>
+          <tr><td>下穴：n / vf</td><td>${fmt(drill.n,0)} min⁻¹ / ${fmt(drill.vf,0)} mm/min</td></tr>
+          <tr><td>下穴：P / T</td><td>${fmt(drill.P,2)} kW / ${fmt(drill.T,1)} N·m</td></tr>
+          <tr><td>下穴：時間</td><td>${isFinite(extras.t_drill)?fmt(extras.t_drill,3)+" 分":"—"}</td></tr>
+          <tr><td>リーマ：Vc / f</td><td>${fmt(extras.Vc_ream,0)} m/min / ${fmt(extras.f_ream,3)} mm/rev</td></tr>
+          <tr><td>リーマ：n / vf</td><td>${fmt(ream.n,0)} min⁻¹ / ${fmt(ream.vf,0)} mm/min</td></tr>
+          <tr><td>リーマ：P / T</td><td>${fmt(ream.P,2)} kW / ${fmt(ream.T,1)} N·m</td></tr>
+          <tr><td>リーマ：時間</td><td>${isFinite(extras.t_ream)?fmt(extras.t_ream,3)+" 分":"—"}</td></tr>
+        </table>
+      </div>
+    `;
+  }
+
+  const head = `
+    <div>
+      ${pill(`材質: ${mat.label}`)}
+      ${pill(`目的: ${mode==="rough" ? "荒取り" : "仕上げ"}`)}
+      ${pill(`冷却: ${cool}`)}
+      ${pill(`U: ${U}`)}
+    </div>
+    <div class="hint">
+      推奨 Vc（補正後）: ${fmt(recEff[0],0)}〜${fmt(recEff[1],0)} m/min ／ 基準 Vc: ${fmt(Vc_base,0)} m/min
+    </div>
+  `;
+
+  const calcTable = `
+    <table>
+      <tr><td>周速 Vc</td><td>${fmt(Vc_base,0)} m/min</td></tr>
+      <tr><td>主軸回転数 n</td><td>${fmt(result.n,0)} min⁻¹</td></tr>
+      <tr><td>送り速度 vf</td><td>${fmt(result.vf,0)} mm/min</td></tr>
+      <tr><td>MRR</td><td>${fmt(result.MRR,0)} mm³/min</td></tr>
+      <tr><td>主軸動力 P</td><td>${fmt(result.P,2)} kW（上限 ${fmt(pmax,2)} に対し ${pct(result.loadP)}）</td></tr>
+      <tr><td>主軸トルク T</td><td>${fmt(result.T,1)} N·m（上限 ${fmt(tmax,1)} に対し ${pct(result.loadT)}）</td></tr>
+      ${proc==="turn" ? `<tr><td>理論 Ra</td><td>${isFinite(Ra) ? fmt(Ra,2)+" µm" : "—（re入力で計算）"}</td></tr>` : ``}
+      ${timeRows}
+    </table>
+  `;
+
+  const evalBlock = `
+    <div class="card">
+      <h2>評価・リスク</h2>
+      <div>周速：<span class="${speedEval.cls}">${speedEval.text}</span></div>
+      <div>負荷：<span class="${loadEval.cls}">${loadEval.text}</span>（P/Tの大きい方）</div>
+      ${proc==="turn" && extras.D_eff ? `<div class="hint">旋削 有効径 D_eff ≈ ${fmt(extras.D_eff,2)} mm</div>` : ``}
+      ${proc==="hole" ? `<div class="hint">穴加工の警告は入力欄の下に表示されています（リーマ代・深穴など）。</div>` : ``}
+    </div>
+  `;
+
+  const formulas = `
+    <div class="card">
+      <h2>使用式</h2>
+      <div class="mono">
+        n = 1000*Vc/(πD)<br>
+        vf(旋削/穴) = f*n,  vf(ミル) = fz*z*n<br>
+        MRR(ミル) = ap*ae*vf<br>
+        MRR(ドリル/リーマ) = (πD²/4)*vf<br>
+        MRR(旋削 長手) = ap*f*(πD_eff*n),  MRR(溝) = ap*b*vf<br>
+        P = U*MRR/60000,  T = 9550*P/n<br>
+        Ra(旋削) ≈ f²/(32re)*1000<br>
+        タップ：vf = ピッチ * n（同期タップ前提）／Vcは種類で補正（切削0.25、形成0.18）
+      </div>
+    </div>
+  `;
+
+  document.getElementById("out").innerHTML = head + calcTable + holeDetail + evalBlock + formulas;
+}
+</script>
+</body>
+</html>

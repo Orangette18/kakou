@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>加工条件 計算（旋削＋ミル＋穴加工：ドリル/リーマ/タップ）</title>
+  <title>加工条件 計算（旋削＋ミル＋穴加工）</title>
   <style>
     body { font-family: system-ui, -apple-system, "Segoe UI", Arial, sans-serif; margin: 16px; }
     h1 { font-size: 20px; margin: 0 0 12px; }
@@ -23,13 +23,17 @@
     table { border-collapse: collapse; }
     td { padding: 3px 8px; vertical-align: top; }
     .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; }
+
+    /* 必須入力の色 */
+    .req { background: #fff7cc; border-color: #d6b000; }
+    .req-missing { background: #ffe5e5; border-color: #b00020; }
   </style>
 </head>
 <body>
   <h1>加工条件 計算（旋削＋マシニング＋穴加工：ドリル/リーマ/タップ）</h1>
   <div class="hint">
-    入力 →「計算する」→ 計算結果／評価（速い・遅い・重い）／注意（リーマ代など）／時間（1穴・合計）が出ます。<br>
-    ★追加：<b>機械制約は空欄OK</b>／<b>現状回転数nを指定</b>して計算できます。
+    初期は空欄です。<b>黄色＝必須</b>／未入力のまま計算すると<b>赤</b>になります。<br>
+    機械制約は空欄OK（空欄はチェックしません）。現状回転数 n を指定して計算もできます。
   </div>
 
   <div class="card">
@@ -77,7 +81,7 @@
 
       <div id="nSetBox" style="display:none;">
         <label>指定回転数 n_set [min⁻¹]</label>
-        <input id="n_set" type="number" step="1" placeholder="例：3000">
+        <input id="n_set" type="number" step="1" placeholder="---">
       </div>
     </div>
   </div>
@@ -97,34 +101,34 @@
 
       <div id="turnDBox">
         <label>直径 D_start [mm]（加工前）</label>
-        <input id="D_turn" type="number" step="0.01" value="50">
+        <input id="D_turn" type="number" step="0.01" placeholder="---">
       </div>
 
       <div>
         <label>切込み ap [mm]（半径方向）</label>
-        <input id="ap_turn" type="number" step="0.01" value="1.0">
+        <input id="ap_turn" type="number" step="0.01" placeholder="---">
       </div>
 
       <div>
         <label>送り f [mm/rev]</label>
-        <input id="f_turn" type="number" step="0.001" value="0.20">
+        <input id="f_turn" type="number" step="0.001" placeholder="---">
       </div>
 
       <div id="grooveBox" style="display:none;">
         <label>溝幅 b [mm]</label>
-        <input id="b_turn" type="number" step="0.01" value="3.0">
+        <input id="b_turn" type="number" step="0.01" placeholder="---">
       </div>
 
       <div id="faceBox" style="display:none;">
         <label>正面：外径 D_outer [mm]</label>
-        <input id="D_outer" type="number" step="0.01" value="60">
+        <input id="D_outer" type="number" step="0.01" placeholder="---">
         <label>正面：内径 D_inner [mm]（中心までなら0）</label>
-        <input id="D_inner" type="number" step="0.01" value="0">
+        <input id="D_inner" type="number" step="0.01" placeholder="---">
       </div>
 
       <div>
         <label>ノーズR re [mm]（任意：Ra計算）</label>
-        <input id="re_turn" type="number" step="0.01" placeholder="例 0.4">
+        <input id="re_turn" type="number" step="0.01" placeholder="任意（例：0.4）">
       </div>
 
       <div>
@@ -142,27 +146,27 @@
     <div class="row">
       <div>
         <label>工具径 D [mm]</label>
-        <input id="D_mill" type="number" step="0.01" value="10">
+        <input id="D_mill" type="number" step="0.01" placeholder="---">
       </div>
 
       <div>
         <label>刃数 z</label>
-        <input id="z_mill" type="number" step="1" value="4">
+        <input id="z_mill" type="number" step="1" placeholder="---">
       </div>
 
       <div>
         <label>切込み ap [mm]</label>
-        <input id="ap_mill" type="number" step="0.01" value="2.0">
+        <input id="ap_mill" type="number" step="0.01" placeholder="---">
       </div>
 
       <div>
         <label>切込み ae [mm]</label>
-        <input id="ae_mill" type="number" step="0.01" value="5.0">
+        <input id="ae_mill" type="number" step="0.01" placeholder="---">
       </div>
 
       <div>
         <label>送り fz [mm/tooth]</label>
-        <input id="fz_mill" type="number" step="0.001" value="0.05">
+        <input id="fz_mill" type="number" step="0.001" placeholder="---">
       </div>
     </div>
   </div>
@@ -182,38 +186,38 @@
 
       <div>
         <label>穴数（個）</label>
-        <input id="qty_hole" type="number" step="1" value="1">
+        <input id="qty_hole" type="number" step="1" placeholder="---">
       </div>
 
       <div>
         <label>穴深さ L [mm]（1穴）</label>
-        <input id="L_hole" type="number" step="0.1" value="20">
+        <input id="L_hole" type="number" step="0.1" placeholder="---">
       </div>
 
       <div>
         <label>仕上径（目標径） D_final [mm]</label>
-        <input id="D_final" type="number" step="0.01" value="10">
+        <input id="D_final" type="number" step="0.01" placeholder="---">
       </div>
 
       <div id="pilotBox" style="display:none;">
         <label>下穴径 D_pilot [mm]（リーマ用）</label>
-        <input id="D_pilot" type="number" step="0.01" value="9.7">
+        <input id="D_pilot" type="number" step="0.01" placeholder="---">
       </div>
 
       <div>
         <label>送り f [mm/rev]</label>
-        <input id="f_hole" type="number" step="0.001" value="0.20">
+        <input id="f_hole" type="number" step="0.001" placeholder="---">
       </div>
 
       <div id="tapStdBox" style="display:none;">
         <label>Mねじ（標準）</label>
         <select id="m_thread" class="wide"></select>
-        <div class="hint">選ぶと「ピッチ」「下穴径（推奨）」が自動で入ります。</div>
+        <div class="hint">選ぶと「ピッチ」「下穴径（推奨）」が自動で入ります（必要なら後で上書き可）。</div>
       </div>
 
       <div id="pitchBox" style="display:none;">
         <label>タップ：ピッチ p [mm]</label>
-        <input id="pitch" type="number" step="0.001" value="1.5">
+        <input id="pitch" type="number" step="0.001" placeholder="---">
       </div>
 
       <div id="tapKindBox" style="display:none;">
@@ -222,11 +226,12 @@
           <option value="cut">切削タップ</option>
           <option value="form">形成タップ</option>
         </select>
+        <div class="hint">Vc自動のとき：形成は低めVcで計算します。</div>
       </div>
 
       <div id="tapPilotBox" style="display:none;">
         <label>タップ：下穴径 D_pilot [mm]（自動入力）</label>
-        <input id="tap_pilot" type="number" step="0.01" value="8.5">
+        <input id="tap_pilot" type="number" step="0.01" placeholder="---">
       </div>
     </div>
 
@@ -239,15 +244,15 @@
     <div class="row">
       <div>
         <label>主軸最高回転 n_max [min⁻¹]</label>
-        <input id="nmax" type="number" step="1" placeholder="例：8000">
+        <input id="nmax" type="number" step="1" placeholder="任意（例：8000）">
       </div>
       <div>
         <label>主軸動力 P_max [kW]</label>
-        <input id="pmax" type="number" step="0.01" placeholder="例：7.5">
+        <input id="pmax" type="number" step="0.01" placeholder="任意（例：7.5）">
       </div>
       <div>
         <label>主軸トルク T_max [N·m]</label>
-        <input id="tmax" type="number" step="0.1" placeholder="例：50">
+        <input id="tmax" type="number" step="0.1" placeholder="任意（例：50）">
       </div>
     </div>
   </div>
@@ -263,7 +268,7 @@
 
 <script>
 /** =========================
- *  材質マスタ
+ *  材質マスタ（初期登録）
  * ========================= */
 const MATERIALS = [
   { key:"S45C",   label:"S45C（鉄）", group:"steel",     U:1.5, Vc:{ rough:[150,220], finish:[180,280] } },
@@ -297,16 +302,20 @@ const METRIC_THREADS = [
 /** =========================
  *  ユーティリティ
  * ========================= */
-function clamp(v, lo, hi){ return Math.max(lo, Math.min(hi, v)); }
 function fmt(x, d=0){ if (!isFinite(x)) return "—"; return Number(x).toFixed(d); }
 function pct(x){ if (!isFinite(x)) return "—"; return (x*100).toFixed(0) + "%"; }
 function pill(text){ return `<span class="pill">${text}</span>`; }
 
 function numOrNaN(id){
-  const s = document.getElementById(id).value;
+  const s = document.getElementById(id)?.value;
   if (s === "" || s === null || s === undefined) return NaN;
   const v = Number(s);
   return isFinite(v) ? v : NaN;
+}
+function reqNum(id, label){
+  const v = numOrNaN(id);
+  if (!isFinite(v)) throw new Error(`未入力: ${label}`);
+  return v;
 }
 
 function severityLoad(load){
@@ -322,10 +331,65 @@ function severitySpeed(Vc_eff, rec){
   if (Vc_eff > hi) return { cls:"warn", text:`速い（推奨上限 ${hi.toFixed(0)} 超）` };
   return { cls:"good", text:"推奨範囲内" };
 }
+function vcFromN(n, D){ return (Math.PI * D * n) / 1000; } // m/min
 
-// n指定 → Vc算出
-function vcFromN(n, D){
-  return (Math.PI * D * n) / 1000; // m/min
+/** =========================
+ *  必須欄の色付け
+ * ========================= */
+function setReqState(id, required){
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.classList.toggle("req", !!required);
+}
+function updateReqColors(){
+  const proc = document.getElementById("proc").value;
+  const turnType = document.getElementById("turnType")?.value;
+  const holeType = document.getElementById("holeType")?.value;
+  const basis = document.getElementById("basis")?.value;
+
+  const all = [
+    "D_turn","ap_turn","f_turn","b_turn","D_outer","D_inner",
+    "D_mill","z_mill","ap_mill","ae_mill","fz_mill",
+    "qty_hole","L_hole","D_final","D_pilot","f_hole","pitch","tap_pilot",
+    "n_set"
+  ];
+  all.forEach(id => setReqState(id, false));
+
+  if (basis === "n") setReqState("n_set", true);
+
+  if (proc === "turn"){
+    setReqState("ap_turn", true);
+    setReqState("f_turn", true);
+
+    if (turnType === "groove"){
+      setReqState("D_turn", true);
+      setReqState("b_turn", true);
+    } else if (turnType === "face_simple" || turnType === "face_precise"){
+      setReqState("D_outer", true);
+      setReqState("D_inner", true); // 0でも良いが、空欄はNG
+    } else { // long
+      setReqState("D_turn", true);
+    }
+  }
+
+  if (proc === "mill"){
+    ["D_mill","z_mill","ap_mill","ae_mill","fz_mill"].forEach(id => setReqState(id, true));
+  }
+
+  if (proc === "hole"){
+    ["qty_hole","L_hole","D_final","f_hole"].forEach(id => setReqState(id, true));
+    if (holeType === "ream") setReqState("D_pilot", true);
+    if (holeType === "tap"){
+      setReqState("pitch", true);
+      setReqState("tap_pilot", true);
+    }
+  }
+}
+function refreshMissingMarks(){
+  document.querySelectorAll(".req").forEach(el => {
+    const isEmpty = (el.value === "" || el.value === null);
+    el.classList.toggle("req-missing", isEmpty);
+  });
 }
 
 /** =========================
@@ -429,9 +493,9 @@ for (const m of MATERIALS){
   opt.textContent = m.label;
   matSel.appendChild(opt);
 }
-matSel.value = "S45C";
+// 初期は先頭（S45C）を選択状態（材質は必須なので）
+matSel.value = MATERIALS[0].key;
 
-// Mねじ
 const mSel = document.getElementById("m_thread");
 for (const t of METRIC_THREADS){
   const opt = document.createElement("option");
@@ -458,14 +522,13 @@ const pitchBox = document.getElementById("pitchBox");
 const tapKindBox = document.getElementById("tapKindBox");
 const tapPilotBox = document.getElementById("tapPilotBox");
 
-// ★基準：Vc or n
 const basisEl = document.getElementById("basis");
 const nSetBox = document.getElementById("nSetBox");
+
 function updateBasisUI(){
-  const b = basisEl.value;
-  nSetBox.style.display = (b === "n") ? "" : "none";
+  nSetBox.style.display = (basisEl.value === "n") ? "" : "none";
 }
-basisEl.addEventListener("change", updateBasisUI);
+basisEl.addEventListener("change", () => { updateBasisUI(); updateReqColors(); refreshMissingMarks(); });
 updateBasisUI();
 
 function updateTurnUI(){
@@ -491,28 +554,30 @@ function updateProcUI(){
   holeCard.style.display = (p==="hole") ? "" : "none";
 }
 
-turnTypeEl.addEventListener("change", updateTurnUI);
-holeTypeEl.addEventListener("change", updateHoleUI);
-procEl.addEventListener("change", updateProcUI);
+turnTypeEl.addEventListener("change", () => { updateTurnUI(); updateReqColors(); refreshMissingMarks(); });
+holeTypeEl.addEventListener("change", () => { updateHoleUI(); updateReqColors(); refreshMissingMarks(); });
+procEl.addEventListener("change", () => { updateProcUI(); updateReqColors(); refreshMissingMarks(); });
 
 mSel.addEventListener("change", () => {
   const t = METRIC_THREADS.find(x => x.name === mSel.value);
   if (!t) return;
+  // 自動入力（ユーザーが上書きしてもOK）
   document.getElementById("D_final").value = t.D;
   document.getElementById("pitch").value = t.P;
   document.getElementById("tap_pilot").value = t.drill;
-  document.getElementById("f_hole").value = t.P;
+  document.getElementById("f_hole").value = t.P; // 同期タップの基本
   updateHoleWarnings();
+  updateReqColors();
+  refreshMissingMarks();
 });
 
-["D_final","D_pilot","L_hole","qty_hole","tapKind","pitch","tap_pilot"].forEach(id=>{
-  document.getElementById(id).addEventListener("input", updateHoleWarnings);
-});
+document.addEventListener("input", () => refreshMissingMarks());
 
 updateTurnUI();
 updateProcUI();
 updateHoleUI();
-mSel.dispatchEvent(new Event("change"));
+updateReqColors();
+refreshMissingMarks();
 
 /** =========================
  *  警告（リーマ代・深穴・タップ）
@@ -552,7 +617,6 @@ function updateHoleWarnings(){
     const pitch = Number(document.getElementById("pitch").value);
     const tapKind = document.getElementById("tapKind").value;
     const Dpilot = Number(document.getElementById("tap_pilot").value);
-
     if (isFinite(pitch) && isFinite(Dfinal) && isFinite(Dpilot)){
       const refCut = Dfinal - pitch;
       const refForm = Dfinal - 0.8*pitch;
@@ -576,11 +640,23 @@ function updateHoleWarnings(){
  *  メイン計算
  * ========================= */
 document.getElementById("calcBtn").addEventListener("click", () => {
+  // まず必須チェック（色付け→未入力なら停止）
+  updateReqColors();
+  refreshMissingMarks();
+
+  const missing = Array.from(document.querySelectorAll(".req")).filter(el => el.value === "" || el.value === null);
+  if (missing.length > 0){
+    missing[0].focus();
+    document.getElementById("out").innerHTML =
+      `<span class="bad">入力が足りません：</span> 黄色（または赤）の欄を入力してください。`;
+    return;
+  }
+
   const proc = procEl.value;
   const mode = document.getElementById("mode").value;
   const cool = document.getElementById("cool").value;
 
-  // ★機械制約は任意（空欄はNaN）
+  // 機械制約は任意
   const nmax = numOrNaN("nmax");
   const pmax = numOrNaN("pmax");
   const tmax = numOrNaN("tmax");
@@ -592,184 +668,186 @@ document.getElementById("calcBtn").addEventListener("click", () => {
   const recEff = effectiveVcTarget({ rec, cool });
   const Vc_base = (recEff[0] + recEff[1]) / 2;
 
-  // ★基準
   const basis = document.getElementById("basis").value;
-  const n_set = numOrNaN("n_set");
+  const n_set = (basis === "n") ? reqNum("n_set", "指定回転数n_set") : NaN;
 
   let result = null;
   let extras = {};
 
   try{
     if (proc === "mill"){
-      const D  = Number(document.getElementById("D_mill").value);
-      const z  = Number(document.getElementById("z_mill").value);
-      const ap = Number(document.getElementById("ap_mill").value);
-      const ae = Number(document.getElementById("ae_mill").value);
-      const fz = Number(document.getElementById("fz_mill").value);
+      const D  = reqNum("D_mill", "工具径D[mm]");
+      const z  = reqNum("z_mill", "刃数z");
+      const ap = reqNum("ap_mill", "切込みap[mm]");
+      const ae = reqNum("ae_mill", "切込みae[mm]");
+      const fz = reqNum("fz_mill", "送りfz[mm/tooth]");
 
       let Vc_use = Vc_base;
       let nmax_use = nmax;
-
-      if (basis==="n" && isFinite(n_set) && n_set>0){
+      if (basis==="n"){
         Vc_use = vcFromN(n_set, D);
-        nmax_use = Infinity; // 指定回転数をそのまま使う
+        nmax_use = Infinity;
       }
 
       result = calcMill({ Vc: Vc_use, D, z, ap, ae, fz, U, nmax: nmax_use, pmax, tmax });
-      extras = { proc, Vc_use, Vc_base, recEff, basis, n_set, D, z, ap, ae, fz };
+      extras = { proc, Vc_use, recEff, basis, n_set, D, z, ap, ae, fz };
 
     } else if (proc === "hole"){
       const holeType = holeTypeEl.value;
-      const qty = Number(document.getElementById("qty_hole").value);
-      const L = Number(document.getElementById("L_hole").value);
-      const D_final = Number(document.getElementById("D_final").value);
-      const f = Number(document.getElementById("f_hole").value);
+      const qty = reqNum("qty_hole", "穴数");
+      const L = reqNum("L_hole", "穴深さL[mm]");
+      const D_final = reqNum("D_final", "仕上径D_final[mm]");
+      const f = reqNum("f_hole", "送りf[mm/rev]");
 
       if (holeType === "drill"){
         let Vc_use = Vc_base;
         let nmax_use = nmax;
-        if (basis==="n" && isFinite(n_set) && n_set>0){
+        if (basis==="n"){
           Vc_use = vcFromN(n_set, D_final);
           nmax_use = Infinity;
         }
 
         const drill = calcHoleAreaMRR({ Vc: Vc_use, D: D_final, f, U, nmax: nmax_use, pmax, tmax });
-        const t1 = (L>0 && drill.vf>0) ? (L/drill.vf) : NaN;
-        const tTot = (isFinite(t1) && isFinite(qty)) ? (t1*qty) : NaN;
+        const t1 = (drill.vf>0) ? (L/drill.vf) : NaN;
+        const tTot = (isFinite(t1)) ? (t1*qty) : NaN;
 
         result = drill;
-        extras = { proc, holeType, Vc_use, Vc_base, recEff, basis, n_set, qty, L, D_final, f, time1:t1, timeTot:tTot };
+        extras = { proc, holeType, Vc_use, recEff, basis, n_set, qty, L, D_final, f, time1:t1, timeTot:tTot };
 
       } else if (holeType === "ream"){
-        const D_pilot = Number(document.getElementById("D_pilot").value);
+        const D_pilot = reqNum("D_pilot", "下穴径D_pilot[mm]（リーマ用）");
 
         // 下穴
         let Vc_drill = Vc_base;
         let nmax_use = nmax;
-        if (basis==="n" && isFinite(n_set) && n_set>0){
+        if (basis==="n"){
           Vc_drill = vcFromN(n_set, D_pilot);
           nmax_use = Infinity;
         }
         const drill = calcHoleAreaMRR({ Vc: Vc_drill, D: D_pilot, f, U, nmax: nmax_use, pmax, tmax });
 
-        // リーマ（初期：低速・低送り）
+        // リーマ（Vc自動時は低速・低送り）
         const Vc_ream_auto = Vc_base * 0.40;
         const f_ream  = f * 0.60;
 
         let Vc_ream = Vc_ream_auto;
-        if (basis==="n" && isFinite(n_set) && n_set>0){
-          // n指定の場合、リーマも同じnで回す前提のVc
+        if (basis==="n"){
           Vc_ream = vcFromN(n_set, D_final);
         }
         const ream = calcHoleAreaMRR({ Vc: Vc_ream, D: D_final, f: f_ream, U, nmax: nmax_use, pmax, tmax });
 
-        const t_drill = (L>0 && drill.vf>0) ? (L/drill.vf) : NaN;
-        const t_ream  = (L>0 && ream.vf>0)  ? (L/ream.vf)  : NaN;
+        const t_drill = (drill.vf>0) ? (L/drill.vf) : NaN;
+        const t_ream  = (ream.vf>0)  ? (L/ream.vf)  : NaN;
         const t1 = (isFinite(t_drill)&&isFinite(t_ream)) ? (t_drill+t_ream) : NaN;
-        const tTot = (isFinite(t1) && isFinite(qty)) ? (t1*qty) : NaN;
+        const tTot = (isFinite(t1)) ? (t1*qty) : NaN;
 
         result = { ...ream, drill, ream };
-        extras = { proc, holeType, Vc_use:Vc_ream, Vc_base, recEff, basis, n_set, qty, L, D_final, D_pilot, f, Vc_drill, Vc_ream, f_ream, t_drill, t_ream, time1:t1, timeTot:tTot };
+        extras = { proc, holeType, Vc_use:Vc_ream, Vc_drill, Vc_ream, f_ream, recEff, basis, n_set, qty, L, D_final, D_pilot, f, t_drill, t_ream, time1:t1, timeTot:tTot };
 
       } else { // tap
-        const pitch = Number(document.getElementById("pitch").value);
+        const pitch = reqNum("pitch", "ピッチp[mm]");
         const tapKind = document.getElementById("tapKind").value;
-        const D_pilot = Number(document.getElementById("tap_pilot").value);
+        const D_pilot = reqNum("tap_pilot", "下穴径D_pilot[mm]（タップ用）");
 
-        // タップVc補正（Vc基準時）
         const Vc_tap_auto = Vc_base * (tapKind==="form" ? 0.18 : 0.25);
 
         let Vc_use = Vc_tap_auto;
         let nmax_use = nmax;
-        if (basis==="n" && isFinite(n_set) && n_set>0){
-          // n指定なら、入力nを優先（Vcはそのnから逆算）
+        if (basis==="n"){
           Vc_use = vcFromN(n_set, D_final);
           nmax_use = Infinity;
         }
 
         const tap = calcTap({ Vc: Vc_use, D_major: D_final, pitch, U, nmax: nmax_use, pmax, tmax });
-
-        const t1 = (L>0 && tap.vf>0) ? (L/tap.vf) : NaN;
-        const tTot = (isFinite(t1) && isFinite(qty)) ? (t1*qty) : NaN;
+        const t1 = (tap.vf>0) ? (L/tap.vf) : NaN;
+        const tTot = (isFinite(t1)) ? (t1*qty) : NaN;
 
         result = tap;
-        extras = { proc, holeType, Vc_use, Vc_base, recEff, basis, n_set, qty, L, D_final, pitch, tapKind, D_pilot, time1:t1, timeTot:tTot };
+        extras = { proc, holeType, Vc_use, recEff, basis, n_set, qty, L, D_final, pitch, tapKind, D_pilot, f, time1:t1, timeTot:tTot };
       }
 
     } else { // turn
       const turnType = document.getElementById("turnType").value;
-      const ap = Number(document.getElementById("ap_turn").value);
-      const f  = Number(document.getElementById("f_turn").value);
-      const re = Number(document.getElementById("re_turn").value);
+      const ap = reqNum("ap_turn", "切込みap[mm]");
+      const f  = reqNum("f_turn", "送りf[mm/rev]");
+      const re = numOrNaN("re_turn"); // 任意
       const isBore = (document.getElementById("isBore").value === "yes");
 
       if (turnType === "groove"){
-        const D_start = Number(document.getElementById("D_turn").value);
+        const D_start = reqNum("D_turn", "直径D_start[mm]");
+        const b = reqNum("b_turn", "溝幅b[mm]");
+
         let Vc_use = Vc_base;
         let nmax_use = nmax;
-        if (basis==="n" && isFinite(n_set) && n_set>0){
+        if (basis==="n"){
           Vc_use = vcFromN(n_set, D_start);
           nmax_use = Infinity;
         }
-        result = calcTurnGroove({ Vc: Vc_use, D_start, ap, f, b: Number(document.getElementById("b_turn").value), U, nmax: nmax_use, pmax, tmax });
-        extras = { proc, Vc_use, Vc_base, recEff, basis, n_set, turnType, D_start, ap, f, b: Number(document.getElementById("b_turn").value), re };
+
+        result = calcTurnGroove({ Vc: Vc_use, D_start, ap, f, b, U, nmax: nmax_use, pmax, tmax });
+        extras = { proc, turnType, Vc_use, recEff, basis, n_set, D_start, ap, f, b, re };
 
       } else if (turnType === "face_simple"){
-        const D_outer = Number(document.getElementById("D_outer").value);
-        const D_inner = Number(document.getElementById("D_inner").value);
+        const D_outer = reqNum("D_outer", "外径D_outer[mm]");
+        const D_inner = reqNum("D_inner", "内径D_inner[mm]（中心なら0）");
         const D_eff = (D_outer + D_inner) / 2;
-        let Vc_use = Vc_base;
-        let nmax_use = nmax;
-        if (basis==="n" && isFinite(n_set) && n_set>0){
-          Vc_use = vcFromN(n_set, D_eff);
-          nmax_use = Infinity;
-        }
-        result = calcTurnFaceSimple({ Vc: Vc_use, D_outer, D_inner, ap, f, U, nmax: nmax_use, pmax, tmax });
-        extras = { proc, Vc_use, Vc_base, recEff, basis, n_set, turnType, D_outer, D_inner, ap, f, re };
 
-      } else if (turnType === "face_precise"){
-        const D_outer = Number(document.getElementById("D_outer").value);
-        const D_inner = Number(document.getElementById("D_inner").value);
-        const D_eff = (D_outer + D_inner) / 2;
         let Vc_use = Vc_base;
         let nmax_use = nmax;
-        if (basis==="n" && isFinite(n_set) && n_set>0){
-          Vc_use = vcFromN(n_set, D_eff);
-          nmax_use = Infinity;
-        }
-        result = calcTurnFacePrecise({ Vc: Vc_use, D_outer, D_inner, ap, f, U, nmax: nmax_use, pmax, tmax });
-        extras = { proc, Vc_use, Vc_base, recEff, basis, n_set, turnType, D_outer, D_inner, ap, f, re, timeMin: result.timeMin, volume: result.volume };
-
-      } else { // long
-        const D_start = Number(document.getElementById("D_turn").value);
-        const D_eff = isBore ? (D_start + ap) : (D_start - ap);
-        let Vc_use = Vc_base;
-        let nmax_use = nmax;
-        if (basis==="n" && isFinite(n_set) && n_set>0){
+        if (basis==="n"){
           Vc_use = vcFromN(n_set, Math.max(D_eff,0.1));
           nmax_use = Infinity;
         }
+
+        result = calcTurnFaceSimple({ Vc: Vc_use, D_outer, D_inner, ap, f, U, nmax: nmax_use, pmax, tmax });
+        extras = { proc, turnType, Vc_use, recEff, basis, n_set, D_outer, D_inner, ap, f, re };
+
+      } else if (turnType === "face_precise"){
+        const D_outer = reqNum("D_outer", "外径D_outer[mm]");
+        const D_inner = reqNum("D_inner", "内径D_inner[mm]（中心なら0）");
+        const D_eff = (D_outer + D_inner) / 2;
+
+        let Vc_use = Vc_base;
+        let nmax_use = nmax;
+        if (basis==="n"){
+          Vc_use = vcFromN(n_set, Math.max(D_eff,0.1));
+          nmax_use = Infinity;
+        }
+
+        result = calcTurnFacePrecise({ Vc: Vc_use, D_outer, D_inner, ap, f, U, nmax: nmax_use, pmax, tmax });
+        extras = { proc, turnType, Vc_use, recEff, basis, n_set, D_outer, D_inner, ap, f, re, timeMin: result.timeMin, volume: result.volume };
+
+      } else { // long
+        const D_start = reqNum("D_turn", "直径D_start[mm]");
+        const D_eff = isBore ? (D_start + ap) : (D_start - ap);
+
+        let Vc_use = Vc_base;
+        let nmax_use = nmax;
+        if (basis==="n"){
+          Vc_use = vcFromN(n_set, Math.max(D_eff,0.1));
+          nmax_use = Infinity;
+        }
+
         result = calcTurnLong({ Vc: Vc_use, D_start, ap, f, U, nmax: nmax_use, pmax, tmax, isBore });
-        extras = { proc, Vc_use, Vc_base, recEff, basis, n_set, turnType, D_start, D_eff: result.D_eff, ap, f, re, isBore };
+        extras = { proc, turnType, Vc_use, recEff, basis, n_set, D_start, D_eff: result.D_eff, ap, f, re, isBore };
       }
     }
 
     renderAll({ mode, cool, mat, U, result, extras, pmax, tmax });
 
   } catch(e){
-    document.getElementById("out").innerHTML = `<span class="bad">計算エラー：</span> ${String(e)}`;
+    document.getElementById("out").innerHTML =
+      `<span class="bad">入力エラー：</span> ${String(e.message || e)}`;
   }
 });
 
 function renderAll(ctx){
   const { mode, cool, mat, U, result, extras, pmax, tmax } = ctx;
 
-  const Vc_display = (extras && isFinite(extras.Vc_use)) ? extras.Vc_use : extras.Vc_base;
-  const recEff = extras.recEff;
+  const Vc_display = extras?.Vc_use;
+  const recEff = extras?.recEff ?? [NaN, NaN];
 
-  // Vc評価は「推奨レンジ vs 実際に使ったVc」
   const speedEval = severitySpeed(Vc_display, recEff);
-
   const loadMax = Math.max(result.loadP ?? NaN, result.loadT ?? NaN);
   const loadEval = severityLoad(loadMax);
 
@@ -853,8 +931,9 @@ function renderAll(ctx){
         n = 1000*Vc/(πD) ／ Vc = πD n /1000<br>
         vf(旋削/穴) = f*n,  vf(ミル) = fz*z*n<br>
         MRR(ミル) = ap*ae*vf ／ MRR(ドリル/リーマ) = (πD²/4)*vf<br>
+        旋削(長手) MRR = ap*f*(πD_eff*n), 溝 MRR = ap*b*vf<br>
         P = U*MRR/60000,  T = 9550*P/n<br>
-        タップ：vf = ピッチ * n（同期タップ前提）／Vcは（Vc自動時のみ）種類で低め補正
+        タップ：vf = ピッチ * n（同期タップ前提）／Vc自動のとき：切削/形成で低め補正
       </div>
     </div>
   `;
